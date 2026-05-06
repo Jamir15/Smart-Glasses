@@ -48,9 +48,18 @@ export const classifyTVOC = (value) => {
 };
 
 /**
- * Check if any reading is in BAD status
- * Used for triggering notifications
+ * Check if alert should be sent
+ * Triggers when:
+ * - TVOC is Moderate or Bad AND eCO2 is Good, OR
+ * - eCO2 is Moderate or Bad AND TVOC is Good
+ * This covers mismatched air quality readings
  */
 export const isBadStatus = (eco2Classification, tvocClassification) => {
-  return eco2Classification.status === 'Bad' || tvocClassification.status === 'Bad';
+  const eco2IsGood = eco2Classification.status === 'Good';
+  const tvocIsGood = tvocClassification.status === 'Good';
+  const eco2IsBadOrModerate = eco2Classification.status === 'Bad' || eco2Classification.status === 'Moderate';
+  const tvocIsBadOrModerate = tvocClassification.status === 'Bad' || tvocClassification.status === 'Moderate';
+
+  // Send alert if TVOC is bad/moderate and eCO2 is good, OR if eCO2 is bad/moderate and TVOC is good
+  return (tvocIsBadOrModerate && eco2IsGood) || (eco2IsBadOrModerate && tvocIsGood);
 };
