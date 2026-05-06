@@ -7,7 +7,7 @@ import express from 'express';
 import { classifyECO2, classifyTVOC, isBadStatus } from '../utils/qualityClassification.js';
 import { getLatestData, setLatestData } from '../utils/dataStore.js';
 import { sendAlertEmail, shouldSendAlert as shouldSendEmailAlert } from '../services/emailService.js';
-import { sendTelegramAlert, shouldSendAlert as shouldSendTelegramAlert } from '../services/telegramService.js';
+import { sendTelegramAlert } from '../services/telegramService.js';
 
 const router = express.Router();
 
@@ -45,9 +45,7 @@ router.post('/data', async (req, res) => {
 
     // Check if alert should be sent
     if (isBadStatus(eco2Classification, tvocClassification)) {
-      if (shouldSendTelegramAlert()) {
-        await sendTelegramAlert(eco2, tvoc, eco2Classification.status, tvocClassification.status);
-      }
+      await sendTelegramAlert(eco2, tvoc, eco2Classification.status, tvocClassification.status);
       // Note: Email alert would need a default recipient; for manual sending via POST /api/send-email
     }
 
