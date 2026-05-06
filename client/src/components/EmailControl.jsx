@@ -124,30 +124,31 @@ const EmailControl = ({ data }) => {
           )}
 
           {/* Email Form - Opaque/Disabled */}
-          <form onSubmit={handleSendEmail} className="flex gap-2 mb-3 opacity-50 pointer-events-none">
-            <div className="relative flex-1">
+          <form onSubmit={(e) => { e.preventDefault(); setShowPremiumModal(true); }} className="flex gap-2 mb-3">
+            <div
+              onClick={() => setShowPremiumModal(true)}
+              className="relative flex-1 cursor-pointer opacity-50 hover:opacity-60 transition-opacity"
+            >
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter email address..."
-                className="w-full px-10 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 text-sm"
-                disabled={isLoading}
+                className="w-full px-10 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500 text-sm pointer-events-none"
+                disabled={true}
               />
               {/* Lock Icon */}
-              <button
-                type="button"
-                onClick={() => setShowPremiumModal(true)}
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-yellow-400 hover:text-yellow-300 transition-colors pointer-events-auto"
+              <span
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-yellow-400"
                 title="Premium feature"
               >
                 🔒
-              </button>
+              </span>
             </div>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed opacity-50"
             >
               {isLoading ? '...' : 'Email'}
             </button>
