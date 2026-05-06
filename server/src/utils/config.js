@@ -20,6 +20,6 @@ export const getConfig = () => ({
   // Telegram Configuration
   telegram: {
     botToken: process.env.TELEGRAM_BOT_TOKEN,
-    chatId: process.env.TELEGRAM_CHAT_ID,
+    chatIds: process.env.TELEGRAM_CHAT_IDS ? process.env.TELEGRAM_CHAT_IDS.split(',').map(id => id.trim()) : [],
   },
 });

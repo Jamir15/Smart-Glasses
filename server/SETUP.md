@@ -21,7 +21,14 @@ cp .env.example .env
 - `SMTP_USER` - Your Gmail address
 - `SMTP_PASS` - Gmail app password (16 characters)
 - `TELEGRAM_BOT_TOKEN` - Get from @BotFather on Telegram
-- `TELEGRAM_CHAT_ID` - Your Telegram user ID
+- `TELEGRAM_CHAT_IDS` - Comma-separated list of Telegram user IDs (e.g., `123456789,987654321,555666777`)
+
+### Getting Your Telegram User ID
+1. Start a chat with your bot (created via @BotFather)
+2. Send any message to the bot
+3. Visit: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+4. Find your user ID in the `chat.id` field
+5. Add all user IDs to `TELEGRAM_CHAT_IDS` separated by commas
 
 ### 3. Start Development Server
 ```bash
