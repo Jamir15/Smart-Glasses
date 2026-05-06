@@ -10,30 +10,6 @@ import { getStatusColorClass, getGlowClass } from '../utils/helpers';
 const AirQualityDisplay = ({ data, isLoading }) => {
   const [displayMode, setDisplayMode] = useState('eco2'); // 'eco2' or 'tvoc'
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900">
-        <div className="text-center">
-          <div className="mb-4">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-          </div>
-          <p className="text-white text-lg">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900">
-        <div className="text-center">
-          <p className="text-white text-lg mb-2">No data available</p>
-          <p className="text-gray-400 text-sm">Waiting for sensor readings...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Determine which value and classification to display
   const isEco2Mode = displayMode === 'eco2';
   const currentValue = isEco2Mode ? data.eco2 : data.tvoc;
@@ -42,8 +18,9 @@ const AirQualityDisplay = ({ data, isLoading }) => {
   const label = isEco2Mode ? 'eCO2' : 'TVOC';
 
   const statusColor = currentClassification.status;
-  const colorClass = getStatusColorClass(statusColor);
-  const glowClass = getGlowClass(statusColor);
+  const displayStatus = currentValue === 0 ? 'offline' : statusColor;
+  const colorClass = getStatusColorClass(displayStatus);
+  const glowClass = getGlowClass(displayStatus);
 
   const handleToggle = () => {
     setDisplayMode(isEco2Mode ? 'tvoc' : 'eco2');
@@ -55,7 +32,9 @@ const AirQualityDisplay = ({ data, isLoading }) => {
       <div className={`transition-all duration-500 ease-in-out animate-transition ${glowClass} rounded-2xl bg-gray-800 p-8 md:p-12 w-full max-w-md`}>
         {/* Status Badge */}
         <div className={`text-center mb-8 px-4 py-2 rounded-full inline-block w-full ${colorClass}`}>
-          <span className="font-bold text-lg">{statusColor.toUpperCase()}</span>
+          <span className="font-bold text-lg">
+            {currentValue === 0 ? 'OFFLINE' : statusColor.toUpperCase()}
+          </span>
         </div>
 
         {/* Large Number Display */}
@@ -63,8 +42,8 @@ const AirQualityDisplay = ({ data, isLoading }) => {
           <div
             className={`text-7xl md:text-8xl font-bold mb-4 animate-slide-in`}
             style={{
-              color: currentClassification.color,
-              textShadow: `0 0 30px ${currentClassification.color}80`,
+              color: currentValue === 0 ? '#9CA3AF' : currentClassification.color,
+              textShadow: currentValue === 0 ? 'none' : `0 0 30px ${currentClassification.color}80`,
             }}
           >
             {currentValue}
