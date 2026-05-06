@@ -3,6 +3,19 @@
  * Centralized environment variables and config
  */
 
+const parseTelegramChatId = () => {
+  if (process.env.TELEGRAM_CHAT_ID) {
+    return process.env.TELEGRAM_CHAT_ID.trim();
+  }
+
+  // Backward compatibility: if TELEGRAM_CHAT_IDS is present, use only the first ID.
+  const rawChatIds = process.env.TELEGRAM_CHAT_IDS || '';
+  return rawChatIds
+    .split(',')
+    .map((id) => id.trim())
+    .find(Boolean);
+};
+
 export const getConfig = () => ({
   port: process.env.PORT || 5000,
   nodeEnv: process.env.NODE_ENV || 'development',
@@ -20,6 +33,6 @@ export const getConfig = () => ({
   // Telegram Configuration
   telegram: {
     botToken: process.env.TELEGRAM_BOT_TOKEN,
-    chatIds: process.env.TELEGRAM_CHAT_IDS ? process.env.TELEGRAM_CHAT_IDS.split(',').map(id => id.trim()) : [],
+    chatId: parseTelegramChatId(),
   },
 });
