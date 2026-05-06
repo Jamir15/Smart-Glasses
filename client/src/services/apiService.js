@@ -22,6 +22,18 @@ export const fetchAirQualityData = async () => {
     }
 
     const result = await response.json();
+    
+    // If data is null or missing, return default structure
+    if (!result.data || result.data.eco2 === null || result.data.tvoc === null) {
+      return {
+        eco2: 0,
+        tvoc: 0,
+        eco2Classification: { status: 'good', color: '#10b981' },
+        tvocClassification: { status: 'good', color: '#10b981' },
+        timestamp: new Date().toISOString(),
+      };
+    }
+    
     return result.data;
   } catch (error) {
     console.error('Error fetching data:', error);

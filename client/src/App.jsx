@@ -25,7 +25,10 @@ const App = () => {
   const loadData = useCallback(async () => {
     try {
       const freshData = await fetchAirQualityData();
-      setData(freshData);
+      // Ensure data is always a valid object
+      if (freshData && typeof freshData === 'object') {
+        setData(freshData);
+      }
       setError(null);
     } catch (err) {
       console.error('Failed to load data:', err);
