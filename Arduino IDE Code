@@ -1,0 +1,282 @@
+#include <Arduino.h>
+#include <Wire.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <time.h>
+#include <U8g2lib.h>
+#include <Adafruit_SGP30.h>
+
+// ================= PINS =================
+#define SDA_PIN 8
+#define SCL_PIN 9
+#define BUTTON_PIN 0
+
+// ================= WIFI =================
+// const char* SSID = "2.4G-bvNY";
+// const char* PASSWORD = "GXKMudGA";
+
+const char* SSID = "T30";
+const char* PASSWORD = "Claudette";
+
+// Use your Render backend endpoint
+const char* SERVER_URL = "https://smart-glasses-backend-zx92.onrender.com/api/data";
+
+// ================= TIME =================
+const char* ntpServer = "pool.ntp.org";
+const long gmtOffset_sec = 8 * 3600;
+const int daylightOffset_sec = 0;
+
+// ================= OLED =================
+U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
+
+// ================= SENSOR =================
+Adafruit_SGP30 sgp;
+
+// ================= STATE =================
+volatile bool buttonPressed = false;
+
+int screenMode = 0;
+// 0 = Time
+// 1 = TVOC
+// 2 = eCO2
+
+unsigned long lastButtonTime = 0;
+const unsigned long debounceDelay = 180;
+
+unsigned long lastSensorRead = 0;
+const unsigned long SENSOR_INTERVAL = 5000;
+
+unsigned long lastDisplayUpdate = 0;
+const unsigned long DISPLAY_INTERVAL = 500;
+
+uint16_t eco2 = 0;
+uint16_t tvoc = 0;
+
+// ================= INTERRUPT =================
+void IRAM_ATTR handleButtonInterrupt() {
+  buttonPressed = true;
+}
+
+// ================= WIFI =================
+void connectWiFi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(SSID, PASSWORD);
+
+  Serial.print("Connecting to WiFi");
+
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 30) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nWiFi connected");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("\nWiFi failed");
+  }
+}
+
+// ================= SERVER =================
+void sendDataToServer(uint16_t eco2Value, uint16_t tvocValue) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi not connected. Data not sent.");
+    return;
+  }
+
+  HTTPClient http;
+  http.setTimeout(3000);
+
+  String payload = "{\"eco2\":" + String(eco2Value) +
+                   ",\"tvoc\":" + String(tvocValue) + "}";
+
+  http.begin(SERVER_URL);
+  http.addHeader("Content-Type", "application/json");
+
+  int httpCode = http.POST(payload);
+
+  Serial.print("POST: ");
+  Serial.println(payload);
+
+  if (httpCode > 0) {
+    Serial.print("HTTP Response: ");
+    Serial.println(httpCode);
+    Serial.println(http.getString());
+  } else {
+    Serial.print("HTTP Error: ");
+    Serial.println(httpCode);
+  }
+
+  http.end();
+}
+
+// ================= SENSOR =================
+void readSensor() {
+  if (!sgp.IAQmeasure()) {
+    Serial.println("SGP30 measurement failed");
+    return;
+  }
+
+  eco2 = sgp.eCO2;
+  tvoc = sgp.TVOC;
+
+  Serial.print("eCO2: ");
+  Serial.print(eco2);
+  Serial.print(" ppm | TVOC: ");
+  Serial.print(tvoc);
+  Serial.println(" ppb");
+
+  sendDataToServer(eco2, tvoc);
+}
+
+// ================= BUTTON =================
+void checkButton() {
+  if (buttonPressed) {
+    buttonPressed = false;
+
+    unsigned long now = millis();
+
+    if (now - lastButtonTime > debounceDelay) {
+      screenMode++;
+
+      if (screenMode > 2) {
+        screenMode = 0;
+      }
+
+      lastButtonTime = now;
+
+      Serial.print("Screen changed to: ");
+      Serial.println(screenMode);
+
+      drawCurrentScreen();   // Immediate screen update
+    }
+  }
+}
+
+// ================= DISPLAY =================
+void drawTimeScreen() {
+  struct tm timeinfo;
+
+  u8g2.clearBuffer();
+
+  if (!getLocalTime(&timeinfo, 10)) {
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    u8g2.drawStr(15, 35, "No Internet Time");
+    u8g2.sendBuffer();
+    return;
+  }
+
+  char timeText[12];
+  char dateText[20];
+
+  strftime(timeText, sizeof(timeText), "%I:%M %p", &timeinfo);
+  strftime(dateText, sizeof(dateText), "%b %d, %Y", &timeinfo);
+
+  u8g2.setFont(u8g2_font_logisoso28_tf);
+  int timeWidth = u8g2.getStrWidth(timeText);
+  u8g2.drawStr((128 - timeWidth) / 2, 38, timeText);
+
+  u8g2.setFont(u8g2_font_6x12_tr);
+  int dateWidth = u8g2.getStrWidth(dateText);
+  u8g2.drawStr((128 - dateWidth) / 2, 60, dateText);
+
+  u8g2.sendBuffer();
+}
+
+void drawTVOCScreen() {
+  u8g2.clearBuffer();
+
+  char valueText[10];
+  sprintf(valueText, "%u", tvoc);
+
+  u8g2.setFont(u8g2_font_logisoso38_tf);
+  int valueWidth = u8g2.getStrWidth(valueText);
+  u8g2.drawStr((128 - valueWidth) / 2, 45, valueText);
+
+  u8g2.setFont(u8g2_font_6x12_tr);
+  u8g2.drawStr(46, 62, "TVOC ppb");
+
+  u8g2.sendBuffer();
+}
+
+void drawECO2Screen() {
+  u8g2.clearBuffer();
+
+  char valueText[10];
+  sprintf(valueText, "%u", eco2);
+
+  u8g2.setFont(u8g2_font_logisoso38_tf);
+  int valueWidth = u8g2.getStrWidth(valueText);
+  u8g2.drawStr((128 - valueWidth) / 2, 45, valueText);
+
+  u8g2.setFont(u8g2_font_6x12_tr);
+  u8g2.drawStr(43, 62, "eCO2 ppm");
+
+  u8g2.sendBuffer();
+}
+
+void drawCurrentScreen() {
+  if (screenMode == 0) {
+    drawTimeScreen();
+  } else if (screenMode == 1) {
+    drawTVOCScreen();
+  } else {
+    drawECO2Screen();
+  }
+}
+
+// ================= SETUP =================
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonInterrupt, FALLING);
+
+  Wire.begin(SDA_PIN, SCL_PIN);
+  Wire.setClock(100000);
+
+  u8g2.begin();
+  u8g2.setContrast(255);
+
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x12_tr);
+  u8g2.drawStr(20, 35, "Starting...");
+  u8g2.sendBuffer();
+
+  if (!sgp.begin()) {
+    Serial.println("SGP30 not found");
+
+    u8g2.clearBuffer();
+    u8g2.drawStr(15, 35, "SGP30 not found");
+    u8g2.sendBuffer();
+
+    while (true);
+  }
+
+  Serial.println("SGP30 initialized");
+
+  connectWiFi();
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
+  drawCurrentScreen();
+}
+
+// ================= LOOP =================
+void loop() {
+  checkButton();
+
+  if (millis() - lastSensorRead >= SENSOR_INTERVAL) {
+    lastSensorRead = millis();
+    readSensor();
+  }
+
+  if (millis() - lastDisplayUpdate >= DISPLAY_INTERVAL) {
+    lastDisplayUpdate = millis();
+    drawCurrentScreen();
+  }
+
+  delay(5);
+}
