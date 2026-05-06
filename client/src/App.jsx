@@ -10,8 +10,15 @@ import { fetchAirQualityData } from './services/apiService';
 import './index.css';
 
 const App = () => {
-  const [data, setData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Initialize with default data showing 0 values
+  const [data, setData] = useState({
+    eco2: 0,
+    tvoc: 0,
+    eco2Classification: { status: 'good', color: '#10b981' },
+    tvocClassification: { status: 'good', color: '#10b981' },
+    timestamp: new Date().toISOString(),
+  });
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Fetch data function
@@ -29,8 +36,7 @@ const App = () => {
 
   // Initial load
   useEffect(() => {
-    setIsLoading(true);
-    loadData().then(() => setIsLoading(false));
+    loadData();
   }, [loadData]);
 
   // Poll for updates every 5 seconds
